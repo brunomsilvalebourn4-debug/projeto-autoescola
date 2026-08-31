@@ -5,6 +5,7 @@ from flask import Flask, redirect, render_template, session, url_for
 from config import Config
 from modules.alunos import alunos
 from modules.aulas import aulas
+from modules.calendario import calendario
 from modules.auth import auth
 from modules.decorators import login_required
 from modules.db import init_app as init_database
@@ -26,6 +27,7 @@ def create_app(test_config=None):
     application.register_blueprint(veiculos)
     application.register_blueprint(processos)
     application.register_blueprint(aulas)
+    application.register_blueprint(calendario)
 
     @application.route("/")
     def home():

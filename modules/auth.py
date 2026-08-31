@@ -40,6 +40,7 @@ def login():
             session['user_id'] = usuario['id']
             session['usuario'] = usuario['nome']
             session['perfil'] = usuario['perfil']
+            session['instrutor_id'] = usuario['instrutor_id']
 
             return redirect(url_for('dashboard'))
 
