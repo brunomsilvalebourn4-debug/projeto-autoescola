@@ -1,0 +1,30 @@
+# Ambiente e caches Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Configuração local e segredos
+.env
+.env.*
+!.env.example
+
+# Bancos e dados pessoais
+*.db
+*.db-shm
+*.db-wal
+uploads/
+requerimentos_modelos/
+gerados_requerimentos/
+dados_navegador/
+backups/
+Imagem/
+
+# Artefatos de depuração e sistema
+*.log
+recall_debug.png
+resultado.png
+screenshot.png
+.DS_Store
+Thumbs.db
