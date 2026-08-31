@@ -2,9 +2,9 @@ services:
   - type: web
     name: autoescola-web
     runtime: python
-    plan: 0.5c-512mb
+    plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 app:app
+    startCommand: python scripts/bootstrap_admin.py && gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 app:app
     healthCheckPath: /health
     envVars:
       - key: APP_ENV
@@ -14,12 +14,14 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
-        value: /var/data/autoescola.db
+        value: /tmp/autoescola.db
+      - key: INITIAL_ADMIN_NAME
+        value: Administrador
+      - key: INITIAL_ADMIN_EMAIL
+        sync: false
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
       - key: SESSION_COOKIE_SECURE
         value: "true"
       - key: FLASK_DEBUG
         value: "false"
-    disk:
-      name: autoescola-data
-      mountPath: /var/data
-      sizeGB: 1

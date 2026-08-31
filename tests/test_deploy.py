@@ -28,8 +28,12 @@ class DeployTest(unittest.TestCase):
         blueprint = (Path(__file__).resolve().parent.parent / "render.yaml").read_text(encoding="utf-8")
         self.assertIn("generateValue: true", blueprint)
         self.assertIn("DATABASE_PATH", blueprint)
-        self.assertIn("/var/data/autoescola.db", blueprint)
+        self.assertIn("plan: free", blueprint)
+        self.assertIn("/tmp/autoescola.db", blueprint)
+        self.assertIn("INITIAL_ADMIN_PASSWORD", blueprint)
+        self.assertIn("sync: false", blueprint)
         self.assertIn("healthCheckPath: /health", blueprint)
+        self.assertNotIn("disk:", blueprint)
         self.assertNotIn("troque-por-uma-chave", blueprint)
 
 
