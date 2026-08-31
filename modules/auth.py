@@ -21,7 +21,7 @@ def login():
         conn = get_connection()
 
         usuario = conn.execute(
-            "SELECT * FROM users WHERE email = ?",
+            "SELECT * FROM users WHERE email = ? AND ativo = 1",
             (email,)
         ).fetchone()
 
@@ -37,7 +37,9 @@ def login():
             session.modified = True
 
             # 🔥 DEFINE USUÁRIO LOGADO
+            session['user_id'] = usuario['id']
             session['usuario'] = usuario['nome']
+            session['perfil'] = usuario['perfil']
 
             return redirect(url_for('dashboard'))
 

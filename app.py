@@ -1,19 +1,13 @@
 import os
 
 from flask import Flask, render_template, redirect, session
-from flask_bcrypt import Bcrypt
-
 from config import Config
 from modules.auth import auth
+from modules.db import init_app as init_database
 
 app = Flask(__name__)
 app.config.from_object(Config)
-
-# ============================================
-# BCRYPT
-# ============================================
-
-bcrypt = Bcrypt(app)
+init_database(app)
 
 # ============================================
 # BLUEPRINTS
