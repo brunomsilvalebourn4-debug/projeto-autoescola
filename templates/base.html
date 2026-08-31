@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ app_name or config.APP_NAME }}{% endblock %}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -37,6 +38,7 @@
                 Alunos
             </a>
             {% endif %}
+            {% if session.get('perfil') == 'ADMINISTRADOR' %}<a href="{{ url_for('users.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-user-shield w-5 text-fuchsia-400" aria-hidden="true"></i>Usuários</a>{% endif %}
             <a href="{{ url_for('calendario.semanal') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-calendar-days w-5 text-sky-400" aria-hidden="true"></i>Calendário</a>
             {% if session.get('perfil') in ('ADMINISTRADOR', 'ATENDENTE') %}
             <a href="{{ url_for('instrutores.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-chalkboard-user w-5 text-violet-400" aria-hidden="true"></i>Instrutores</a>
@@ -48,10 +50,10 @@
 
         <div class="border-t border-slate-800 p-5">
             <p class="mb-3 truncate text-sm text-slate-300">{{ session.get('usuario', 'Usuário') }}</p>
-            <a href="/logout" class="flex items-center justify-center gap-3 rounded-xl bg-red-600 px-4 py-3 font-semibold hover:bg-red-700">
+            <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="flex w-full items-center justify-center gap-3 rounded-xl bg-red-600 px-4 py-3 font-semibold hover:bg-red-700">
                 <i class="fas fa-right-from-bracket" aria-hidden="true"></i>
                 Sair
-            </a>
+            </button></form>
         </div>
     </aside>
 
@@ -74,5 +76,6 @@
     <script src="/static/js/script.js"></script>
     <script src="/static/js/cep.js"></script>
     <script src="/static/js/sugestao-instrutor.js"></script>
+    <script src="/static/js/csrf.js"></script>
 </body>
 </html>

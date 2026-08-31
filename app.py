@@ -6,7 +6,9 @@ from config import Config
 from modules.alunos import alunos
 from modules.aulas import aulas
 from modules.calendario import calendario
+from modules.csrf import init_app as init_csrf
 from modules.sugestoes import sugestoes
+from modules.users import users
 from modules.auth import auth
 from modules.decorators import login_required
 from modules.db import init_app as init_database
@@ -21,8 +23,11 @@ def create_app(test_config=None):
     application.config.from_object(Config)
     if test_config:
         application.config.update(test_config)
+        if application.config.get("TESTING") and "CSRF_ENABLED" not in test_config:
+            application.config["CSRF_ENABLED"] = False
 
     init_database(application)
+    init_csrf(application)
     application.register_blueprint(auth)
     application.register_blueprint(alunos)
     application.register_blueprint(instrutores)
@@ -31,6 +36,7 @@ def create_app(test_config=None):
     application.register_blueprint(aulas)
     application.register_blueprint(calendario)
     application.register_blueprint(sugestoes)
+    application.register_blueprint(users)
 
     @application.route("/")
     def home():
@@ -44,7 +50,7 @@ def create_app(test_config=None):
         indicadores, etapas, situacoes = obter_dashboard()
         return render_template("dashboard.html", app_name=application.config["APP_NAME"], indicadores=indicadores, etapas=etapas, situacoes=situacoes)
 
-    @application.route("/logout")
+    @application.post("/logout")
     def logout():
         session.clear()
         return redirect(url_for("auth.login"))

@@ -11,6 +11,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from config import Config
 
+SCHEMA_PATH = PROJECT_ROOT / "database" / "schema.sql"
+
 
 def main():
     parser = argparse.ArgumentParser(description="Cria o primeiro administrador da Autoescola.")
@@ -27,6 +29,7 @@ def main():
     connection = sqlite3.connect(Config.DB_NAME)
     connection.execute("PRAGMA foreign_keys = ON")
     try:
+        connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         connection.execute(
             "INSERT INTO users (nome, email, senha_hash, perfil) VALUES (?, ?, ?, 'ADMINISTRADOR')",
             (args.nome.strip(), args.email.strip().lower(), generate_password_hash(senha)),
