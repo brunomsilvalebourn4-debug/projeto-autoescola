@@ -8,6 +8,7 @@ from modules.auth import auth
 from modules.decorators import login_required
 from modules.db import init_app as init_database
 from modules.instrutores import instrutores
+from modules.processos import processos
 from modules.veiculos import veiculos
 
 
@@ -22,6 +23,7 @@ def create_app(test_config=None):
     application.register_blueprint(alunos)
     application.register_blueprint(instrutores)
     application.register_blueprint(veiculos)
+    application.register_blueprint(processos)
 
     @application.route("/")
     def home():
