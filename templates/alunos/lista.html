@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Alunos | {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div><h2 class="text-3xl font-bold">Alunos</h2><p class="text-slate-500">{{ total }} registro(s) encontrado(s).</p></div>
+    <a href="{{ url_for('alunos.criar') }}" class="rounded-xl bg-blue-600 px-5 py-3 text-center font-semibold text-white hover:bg-blue-700"><i class="fas fa-plus mr-2" aria-hidden="true"></i>Novo aluno</a>
+</header>
+<form method="get" class="mb-6 grid gap-3 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-[1fr_220px_auto]" role="search">
+    <div><label for="q" class="mb-1 block text-sm font-semibold">Nome, CPF ou telefone</label><input id="q" name="q" value="{{ termo }}" class="w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="Pesquisar aluno"></div>
+    <div><label for="status" class="mb-1 block text-sm font-semibold">Status</label><select id="status" name="status" class="w-full rounded-xl border border-slate-300 px-4 py-3"><option value="">Todos</option>{% for status in statuses %}<option value="{{ status }}" {% if status == status_filtro %}selected{% endif %}>{{ status|replace('_', ' ')|title }}</option>{% endfor %}</select></div>
+    <button class="self-end rounded-xl bg-slate-800 px-5 py-3 font-semibold text-white">Filtrar</button>
+</form>
+<div class="overflow-x-auto rounded-2xl bg-white shadow-sm">
+    <table class="min-w-full text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Nome</th><th class="p-4">CPF</th><th class="p-4">Telefone</th><th class="p-4">Categoria</th><th class="p-4">Status</th><th class="p-4"><span class="sr-only">Ações</span></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">{% for aluno in alunos %}<tr><td class="p-4 font-semibold">{{ aluno.nome_completo }}</td><td class="p-4">{{ aluno.cpf }}</td><td class="p-4">{{ aluno.telefone }}</td><td class="p-4">{{ aluno.categoria_cnh }}</td><td class="p-4">{{ aluno.status|replace('_', ' ')|title }}</td><td class="p-4 text-right"><a class="font-semibold text-blue-700 hover:underline" href="{{ url_for('alunos.detalhe', aluno_id=aluno.id) }}">Visualizar</a></td></tr>{% else %}<tr><td colspan="6" class="p-8 text-center text-slate-500">Nenhum aluno encontrado.</td></tr>{% endfor %}</tbody></table>
+</div>
+{% if total_paginas > 1 %}<nav class="mt-5 flex items-center justify-center gap-3" aria-label="Paginação"><a class="rounded-lg border px-3 py-2 {{ 'pointer-events-none opacity-40' if pagina == 1 }}" href="{{ url_for('alunos.listar', q=termo, status=status_filtro, page=pagina-1) }}">Anterior</a><span>Página {{ pagina }} de {{ total_paginas }}</span><a class="rounded-lg border px-3 py-2 {{ 'pointer-events-none opacity-40' if pagina == total_paginas }}" href="{{ url_for('alunos.listar', q=termo, status=status_filtro, page=pagina+1) }}">Próxima</a></nav>{% endif %}
+{% endblock %}

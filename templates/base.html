@@ -31,7 +31,12 @@
                 <i class="fas fa-chart-line w-5 text-blue-400" aria-hidden="true"></i>
                 Dashboard
             </a>
-            <span class="px-4 py-3 text-sm text-slate-500">Novos módulos serão adicionados nas próximas fases.</span>
+            {% if session.get('perfil') in ('ADMINISTRADOR', 'ATENDENTE') %}
+            <a href="{{ url_for('alunos.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white">
+                <i class="fas fa-user-graduate w-5 text-cyan-400" aria-hidden="true"></i>
+                Alunos
+            </a>
+            {% endif %}
         </nav>
 
         <div class="border-t border-slate-800 p-5">
@@ -49,6 +54,13 @@
             <p class="text-sm text-slate-500">Administração de alunos, instrutores, veículos e aulas</p>
         </header>
         <section class="p-5 lg:p-10">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                <div role="status" class="mb-5 rounded-xl border p-4 {{ 'border-emerald-200 bg-emerald-50 text-emerald-800' if category == 'success' else 'border-red-200 bg-red-50 text-red-800' }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endwith %}
             {% block content %}{% endblock %}
         </section>
     </main>

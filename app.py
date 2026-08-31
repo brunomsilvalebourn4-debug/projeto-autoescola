@@ -1,59 +1,45 @@
 import os
 
-from flask import Flask, render_template, redirect, session
+from flask import Flask, redirect, render_template, session, url_for
+
 from config import Config
+from modules.alunos import alunos
 from modules.auth import auth
+from modules.decorators import login_required
 from modules.db import init_app as init_database
 
-app = Flask(__name__)
-app.config.from_object(Config)
-init_database(app)
 
-# ============================================
-# BLUEPRINTS
-# ============================================
+def create_app(test_config=None):
+    application = Flask(__name__)
+    application.config.from_object(Config)
+    if test_config:
+        application.config.update(test_config)
 
-app.register_blueprint(auth)
+    init_database(application)
+    application.register_blueprint(auth)
+    application.register_blueprint(alunos)
 
-# ============================================
-# HOME
-# ============================================
+    @application.route("/")
+    def home():
+        if "user_id" not in session:
+            return redirect(url_for("auth.login"))
+        return redirect(url_for("dashboard"))
 
-@app.route('/')
-def home():
+    @application.route("/dashboard")
+    @login_required
+    def dashboard():
+        return render_template("dashboard.html", app_name=application.config["APP_NAME"])
 
-    if 'usuario' not in session:
-        return redirect('/login')
+    @application.route("/logout")
+    def logout():
+        session.clear()
+        return redirect(url_for("auth.login"))
 
-    return redirect('/dashboard')
+    return application
 
-# ============================================
-# DASHBOARD
-# ============================================
 
-@app.route('/dashboard')
-def dashboard():
+app = create_app()
 
-    if 'usuario' not in session:
-        return redirect('/login')
 
-    return render_template('dashboard.html', app_name=app.config['APP_NAME'])
-
-# ============================================
-# LOGOUT
-# ============================================
-
-@app.route('/logout')
-def logout():
-
-    session.clear()
-
-    return redirect('/login')
-
-# ============================================
-# START
-# ============================================
-
-if __name__ == '__main__':
-
-    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')
+if __name__ == "__main__":
+    app.run(debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true")
