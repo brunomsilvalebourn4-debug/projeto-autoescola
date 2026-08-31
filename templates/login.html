@@ -7,6 +7,7 @@
     <title>Login | {{ app_name or config.APP_NAME }}</title>
 
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/app.css">
 </head>
 
 <body>
@@ -22,6 +23,7 @@
         <div class="login-title">
             {{ app_name or config.APP_NAME }}
         </div>
+        {% if erro %}<div role="alert" class="mb-4 rounded-xl border border-red-300 bg-red-50 p-3 text-red-800">{{ erro }}</div>{% endif %}
 
         <form method="POST" action="/login">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

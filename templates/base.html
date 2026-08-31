@@ -8,13 +8,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     <style>
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
         .menu-item { transition: background-color .2s ease, color .2s ease; }
     </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-900 lg:flex">
-    <aside class="bg-slate-950 text-white lg:flex lg:min-h-screen lg:w-72 lg:flex-col">
+    <a href="#conteudo-principal" class="skip-link">Pular para o conteúdo principal</a>
+    <button type="button" data-menu-toggle aria-controls="menu-principal" aria-expanded="false" class="m-3 rounded-xl bg-slate-950 px-4 py-3 font-semibold text-white lg:hidden"><i class="fas fa-bars mr-2" aria-hidden="true"></i>Menu</button>
+    <aside id="menu-principal" data-menu class="hidden bg-slate-950 text-white lg:flex lg:min-h-screen lg:w-72 lg:flex-col">
         <div class="border-b border-slate-800 p-6">
             <a href="/dashboard" class="flex items-center gap-4" aria-label="Ir para o dashboard">
                 <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 text-2xl" aria-hidden="true">
@@ -40,6 +43,7 @@
             {% endif %}
             {% if session.get('perfil') == 'ADMINISTRADOR' %}<a href="{{ url_for('users.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-user-shield w-5 text-fuchsia-400" aria-hidden="true"></i>Usuários</a>{% endif %}
             <a href="{{ url_for('calendario.semanal') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-calendar-days w-5 text-sky-400" aria-hidden="true"></i>Calendário</a>
+            <a href="{{ url_for('ajuda.pagina') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-circle-question w-5 text-teal-400" aria-hidden="true"></i>Ajuda</a>
             {% if session.get('perfil') in ('ADMINISTRADOR', 'ATENDENTE') %}
             <a href="{{ url_for('instrutores.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-chalkboard-user w-5 text-violet-400" aria-hidden="true"></i>Instrutores</a>
             <a href="{{ url_for('veiculos.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-car-side w-5 text-emerald-400" aria-hidden="true"></i>Veículos</a>
@@ -57,7 +61,7 @@
         </div>
     </aside>
 
-    <main class="min-w-0 flex-1">
+    <main id="conteudo-principal" tabindex="-1" class="min-w-0 flex-1">
         <header class="border-b border-slate-200 bg-white px-5 py-5 lg:px-10">
             <h1 class="text-xl font-bold text-slate-800">{{ app_name or config.APP_NAME }}</h1>
             <p class="text-sm text-slate-500">Administração de alunos, instrutores, veículos e aulas</p>
@@ -77,5 +81,6 @@
     <script src="/static/js/cep.js"></script>
     <script src="/static/js/sugestao-instrutor.js"></script>
     <script src="/static/js/csrf.js"></script>
+    <script src="/static/js/menu.js"></script>
 </body>
 </html>

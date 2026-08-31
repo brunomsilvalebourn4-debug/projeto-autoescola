@@ -1,0 +1,7 @@
+.skip-link{position:fixed;left:1rem;top:-5rem;z-index:100;background:#fff;color:#0f172a;padding:.75rem 1rem;border:2px solid #2563eb;border-radius:.5rem}.skip-link:focus{top:1rem}
+:focus-visible{outline:3px solid #f59e0b!important;outline-offset:3px!important}
+button:disabled{cursor:not-allowed;opacity:.6}
+input,select,textarea,button,a{min-height:2.75rem}
+table th{font-weight:700;color:#334155}table td,table th{padding:.75rem}
+@media(max-width:640px){table{font-size:.8rem}.overflow-x-auto{overscroll-behavior-inline:contain}.p-10{padding:1.25rem!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}

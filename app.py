@@ -5,6 +5,7 @@ from flask import Flask, redirect, render_template, session, url_for
 from config import Config
 from modules.alunos import alunos
 from modules.aulas import aulas
+from modules.ajuda import ajuda
 from modules.calendario import calendario
 from modules.csrf import init_app as init_csrf
 from modules.sugestoes import sugestoes
@@ -34,6 +35,7 @@ def create_app(test_config=None):
     application.register_blueprint(veiculos)
     application.register_blueprint(processos)
     application.register_blueprint(aulas)
+    application.register_blueprint(ajuda)
     application.register_blueprint(calendario)
     application.register_blueprint(sugestoes)
     application.register_blueprint(users)
