@@ -10,6 +10,7 @@ from modules.sugestoes import sugestoes
 from modules.auth import auth
 from modules.decorators import login_required
 from modules.db import init_app as init_database
+from services.dashboard_service import obter_dashboard
 from modules.instrutores import instrutores
 from modules.processos import processos
 from modules.veiculos import veiculos
@@ -40,7 +41,8 @@ def create_app(test_config=None):
     @application.route("/dashboard")
     @login_required
     def dashboard():
-        return render_template("dashboard.html", app_name=application.config["APP_NAME"])
+        indicadores, etapas, situacoes = obter_dashboard()
+        return render_template("dashboard.html", app_name=application.config["APP_NAME"], indicadores=indicadores, etapas=etapas, situacoes=situacoes)
 
     @application.route("/logout")
     def logout():
