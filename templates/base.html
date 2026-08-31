@@ -41,7 +41,7 @@
                 Alunos
             </a>
             {% endif %}
-            {% if session.get('perfil') == 'ADMINISTRADOR' %}<a href="{{ url_for('users.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-user-shield w-5 text-fuchsia-400" aria-hidden="true"></i>Usuários</a>{% endif %}
+            {% if session.get('perfil') == 'ADMINISTRADOR' %}<a href="{{ url_for('users.listar') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-user-shield w-5 text-fuchsia-400" aria-hidden="true"></i>Usuários</a><a href="{{ url_for('relatorios.pagina') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-file-lines w-5 text-lime-400" aria-hidden="true"></i>Relatórios</a>{% endif %}
             <a href="{{ url_for('calendario.semanal') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-calendar-days w-5 text-sky-400" aria-hidden="true"></i>Calendário</a>
             <a href="{{ url_for('ajuda.pagina') }}" class="menu-item flex items-center gap-3 rounded-xl px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white"><i class="fas fa-circle-question w-5 text-teal-400" aria-hidden="true"></i>Ajuda</a>
             {% if session.get('perfil') in ('ADMINISTRADOR', 'ATENDENTE') %}

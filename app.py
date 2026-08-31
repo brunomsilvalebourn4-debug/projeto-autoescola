@@ -16,6 +16,7 @@ from modules.db import init_app as init_database
 from services.dashboard_service import obter_dashboard
 from modules.instrutores import instrutores
 from modules.processos import processos
+from modules.relatorios import relatorios
 from modules.veiculos import veiculos
 
 
@@ -39,6 +40,7 @@ def create_app(test_config=None):
     application.register_blueprint(calendario)
     application.register_blueprint(sugestoes)
     application.register_blueprint(users)
+    application.register_blueprint(relatorios)
 
     @application.route("/")
     def home():
