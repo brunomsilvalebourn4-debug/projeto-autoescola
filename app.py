@@ -1,6 +1,8 @@
 import os
 
-from flask import Flask, redirect, render_template, session, url_for
+import sqlite3
+
+from flask import Flask, jsonify, redirect, render_template, session, url_for
 
 from config import Config
 from modules.alunos import alunos
@@ -12,7 +14,7 @@ from modules.sugestoes import sugestoes
 from modules.users import users
 from modules.auth import auth
 from modules.decorators import login_required
-from modules.db import init_app as init_database
+from modules.db import get_connection, init_app as init_database
 from services.dashboard_service import obter_dashboard
 from modules.instrutores import instrutores
 from modules.processos import processos
@@ -27,6 +29,9 @@ def create_app(test_config=None):
         application.config.update(test_config)
         if application.config.get("TESTING") and "CSRF_ENABLED" not in test_config:
             application.config["CSRF_ENABLED"] = False
+
+    if application.config["APP_ENV"] == "production" and application.config["SECRET_KEY"] == "dev-change-me":
+        raise RuntimeError("Defina uma SECRET_KEY segura antes de iniciar em produção.")
 
     init_database(application)
     init_csrf(application)
@@ -47,6 +52,16 @@ def create_app(test_config=None):
         if "user_id" not in session:
             return redirect(url_for("auth.login"))
         return redirect(url_for("dashboard"))
+
+    @application.get("/health")
+    def health():
+        try:
+            database_status = get_connection().execute("PRAGMA quick_check").fetchone()[0]
+        except sqlite3.Error:
+            return jsonify(status="error", database="unavailable"), 503
+        if database_status != "ok":
+            return jsonify(status="error", database="unhealthy"), 503
+        return jsonify(status="ok", database="ok")
 
     @application.route("/dashboard")
     @login_required
