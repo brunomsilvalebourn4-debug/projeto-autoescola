@@ -14,6 +14,9 @@ class AulasTest(unittest.TestCase):
   for campo,valor,texto in [('aluno_id','1','aluno'),('instrutor_id','1','instrutor'),('veiculo_id','1','veículo')]:
    d=self.dados(aluno_id='2',instrutor_id='2',veiculo_id='2',horario_inicio='09:30',horario_fim='10:20');d[campo]=valor
    self.assertIn(texto.encode(),self.c.post('/aulas/nova',data=d).data)
+  for campo,valor,texto in [('aluno_id','1','aluno'),('instrutor_id','1','instrutor'),('veiculo_id','1','veículo')]:
+   d=self.dados(aluno_id='2',instrutor_id='2',veiculo_id='2');d[campo]=valor
+   self.assertIn(texto.encode(),self.c.post('/aulas/nova',data=d).data)
  def test_expediente_dia_categoria_e_status(self):
   self.assertIn('expediente'.encode(),self.c.post('/aulas/nova',data=self.dados(horario_inicio='07:00',horario_fim='07:50')).data)
   self.assertIn('indisponível'.encode(),self.c.post('/aulas/nova',data=self.dados(data='2026-09-01')).data)
