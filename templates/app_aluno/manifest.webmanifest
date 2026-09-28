@@ -1,0 +1,19 @@
+{
+  "name": "Minhas Aulas · Autoescola",
+  "short_name": "Minhas Aulas",
+  "description": "Consulte suas aulas práticas da autoescola: próxima aula, instrutor, veículo e histórico.",
+  "id": "/app/",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "pt-BR",
+  "background_color": "#f3f5fa",
+  "theme_color": "#2f5bea",
+  "icons": [
+    {"src": "/static/app_aluno/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/static/app_aluno/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/static/app_aluno/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    {"src": "/static/app_aluno/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

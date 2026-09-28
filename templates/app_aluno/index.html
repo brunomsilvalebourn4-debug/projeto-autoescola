@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f3f5fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Minhas Aulas">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="robots" content="noindex">
+  <title>Minhas Aulas</title>
+  <link rel="manifest" href="{{ url_for('aluno_app.manifest') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='app_aluno/icon.svg') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='app_aluno/apple-touch-icon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app_aluno/app.css') }}?v={{ versao }}">
+  <script src="{{ url_for('static', filename='app_aluno/app.js') }}?v={{ versao }}" defer></script>
+</head>
+<body>
+  <div id="app" aria-live="polite">
+    <div class="splash" role="status"><span class="spinner" aria-hidden="true"></span><span class="sr-only">Carregando</span></div>
+  </div>
+  <div id="sheet-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">Ative o JavaScript para consultar suas aulas.</p></noscript>
+</body>
+</html>

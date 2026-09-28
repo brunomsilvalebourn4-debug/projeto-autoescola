@@ -17,3 +17,9 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     SESSION_REFRESH_EACH_REQUEST = True
     CSRF_ENABLED = True
+    APP_TIMEZONE = os.environ.get("APP_TIMEZONE", "America/Sao_Paulo")
+    ALUNO_APP_TOKEN_DIAS = int(os.environ.get("ALUNO_APP_TOKEN_DIAS", "30"))
+    ALUNO_APP_CODIGO_HORAS = int(os.environ.get("ALUNO_APP_CODIGO_HORAS", "72"))
+    ALUNO_APP_EXIGIR_HTTPS = os.environ.get("ALUNO_APP_EXIGIR_HTTPS", "true" if APP_ENV == "production" else "false").lower() == "true"
+    # Quantidade de proxies reversos confiáveis à frente da aplicação (Render e PythonAnywhere usam 1).
+    ALUNO_APP_PROXIES = int(os.environ.get("ALUNO_APP_PROXIES", "1" if APP_ENV == "production" else "0"))

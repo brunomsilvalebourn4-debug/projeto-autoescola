@@ -159,3 +159,31 @@ CREATE INDEX IF NOT EXISTS idx_aulas_aluno_horario ON aulas(aluno_id, data, hora
 CREATE INDEX IF NOT EXISTS idx_aulas_instrutor_horario ON aulas(instrutor_id, data, horario_inicio, horario_fim);
 CREATE INDEX IF NOT EXISTS idx_aulas_veiculo_horario ON aulas(veiculo_id, data, horario_inicio, horario_fim);
 CREATE INDEX IF NOT EXISTS idx_aulas_situacao ON aulas(situacao);
+
+-- App do aluno (somente consulta): credenciais e sessões isoladas dos usuários administrativos.
+CREATE TABLE IF NOT EXISTS aluno_acessos (
+    aluno_id INTEGER PRIMARY KEY,
+    senha_hash TEXT,
+    codigo_hash TEXT,
+    codigo_expira_em TEXT,
+    ativo INTEGER NOT NULL DEFAULT 1 CHECK (ativo IN (0, 1)),
+    tentativas_falhas INTEGER NOT NULL DEFAULT 0,
+    bloqueado_ate TEXT,
+    ultimo_acesso TEXT,
+    criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS aluno_sessoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    aluno_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expira_em TEXT NOT NULL,
+    ultimo_uso TEXT,
+    FOREIGN KEY (aluno_id) REFERENCES alunos(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_aluno_sessoes_aluno ON aluno_sessoes(aluno_id);
+INSERT OR IGNORE INTO schema_version (versao) VALUES (2);

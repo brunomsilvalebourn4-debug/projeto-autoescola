@@ -4,6 +4,15 @@ from hmac import compare_digest
 from flask import abort, request, session
 
 
+# Blueprints autenticados por token Bearer (sem cookie de sessão) não estão sujeitos a CSRF.
+_blueprints_isentos = set()
+
+
+def isentar(blueprint):
+    _blueprints_isentos.add(blueprint.name)
+    return blueprint
+
+
 def csrf_token():
     if "csrf_token" not in session:
         session["csrf_token"] = secrets.token_urlsafe(32)
@@ -16,6 +25,8 @@ def init_app(app):
     @app.before_request
     def protect_csrf():
         if not app.config.get("CSRF_ENABLED", True):
+            return None
+        if request.blueprint in _blueprints_isentos:
             return None
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             expected = session.get("csrf_token", "")

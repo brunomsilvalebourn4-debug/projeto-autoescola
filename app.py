@@ -6,6 +6,9 @@ from flask import Flask, jsonify, redirect, render_template, session, url_for
 
 from config import Config
 from modules.alunos import alunos
+from modules.aluno_acesso import aluno_acesso
+from modules.aluno_api import aluno_api
+from modules.aluno_app import aluno_app
 from modules.aulas import aulas
 from modules.ajuda import ajuda
 from modules.calendario import calendario
@@ -46,6 +49,9 @@ def create_app(test_config=None):
     application.register_blueprint(sugestoes)
     application.register_blueprint(users)
     application.register_blueprint(relatorios)
+    application.register_blueprint(aluno_acesso)
+    application.register_blueprint(aluno_api)
+    application.register_blueprint(aluno_app)
 
     @application.route("/")
     def home():
