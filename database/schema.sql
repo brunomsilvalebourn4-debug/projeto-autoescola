@@ -160,12 +160,10 @@ CREATE INDEX IF NOT EXISTS idx_aulas_instrutor_horario ON aulas(instrutor_id, da
 CREATE INDEX IF NOT EXISTS idx_aulas_veiculo_horario ON aulas(veiculo_id, data, horario_inicio, horario_fim);
 CREATE INDEX IF NOT EXISTS idx_aulas_situacao ON aulas(situacao);
 
--- App do aluno (somente consulta): credenciais e sessões isoladas dos usuários administrativos.
+-- App do aluno (somente consulta): controle de acesso e sessões isoladas dos usuários administrativos.
+-- O aluno entra com CPF + data de nascimento; ativo = 0 indica bloqueio feito pela equipe.
 CREATE TABLE IF NOT EXISTS aluno_acessos (
     aluno_id INTEGER PRIMARY KEY,
-    senha_hash TEXT,
-    codigo_hash TEXT,
-    codigo_expira_em TEXT,
     ativo INTEGER NOT NULL DEFAULT 1 CHECK (ativo IN (0, 1)),
     tentativas_falhas INTEGER NOT NULL DEFAULT 0,
     bloqueado_ate TEXT,

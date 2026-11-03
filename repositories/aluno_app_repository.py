@@ -12,9 +12,8 @@ class AlunoAppRepository:
     @staticmethod
     def buscar_por_cpf(cpf):
         return get_connection().execute(
-            """SELECT a.id AS aluno_id, a.nome_completo, a.status AS aluno_status,
-                      ac.senha_hash, ac.codigo_hash, ac.codigo_expira_em, ac.ativo,
-                      ac.tentativas_falhas, ac.bloqueado_ate
+            """SELECT a.id AS aluno_id, a.nome_completo, a.status AS aluno_status, a.data_nascimento,
+                      COALESCE(ac.ativo, 1) AS ativo, ac.tentativas_falhas, ac.bloqueado_ate
                FROM alunos a LEFT JOIN aluno_acessos ac ON ac.aluno_id = a.id
                WHERE a.cpf = ?""",
             (cpf,),
@@ -27,6 +26,7 @@ class AlunoAppRepository:
     @staticmethod
     def registrar_falha(aluno_id, limite, bloqueado_ate):
         connection = get_connection()
+        connection.execute("INSERT OR IGNORE INTO aluno_acessos (aluno_id) VALUES (?)", (aluno_id,))
         connection.execute(
             """UPDATE aluno_acessos
                SET tentativas_falhas = tentativas_falhas + 1,
@@ -44,6 +44,7 @@ class AlunoAppRepository:
     @staticmethod
     def registrar_sucesso(aluno_id, agora):
         connection = get_connection()
+        connection.execute("INSERT OR IGNORE INTO aluno_acessos (aluno_id) VALUES (?)", (aluno_id,))
         connection.execute(
             """UPDATE aluno_acessos SET tentativas_falhas = 0, bloqueado_ate = NULL, ultimo_acesso = ?,
                atualizado_em = CURRENT_TIMESTAMP WHERE aluno_id = ?""",
@@ -52,40 +53,25 @@ class AlunoAppRepository:
         connection.commit()
 
     @staticmethod
-    def definir_codigo(aluno_id, codigo_hash, expira_em):
+    def bloquear(aluno_id):
+        """Impede o acesso do aluno ao app e encerra as sessões abertas."""
         connection = get_connection()
         connection.execute(
-            """INSERT INTO aluno_acessos (aluno_id, codigo_hash, codigo_expira_em, ativo)
-               VALUES (?, ?, ?, 1)
-               ON CONFLICT(aluno_id) DO UPDATE SET codigo_hash = excluded.codigo_hash,
-                   codigo_expira_em = excluded.codigo_expira_em, ativo = 1, tentativas_falhas = 0,
-                   bloqueado_ate = NULL, atualizado_em = CURRENT_TIMESTAMP""",
-            (aluno_id, codigo_hash, expira_em),
-        )
-        connection.commit()
-
-    @staticmethod
-    def definir_senha(aluno_id, senha_hash):
-        """Grava a nova senha, consome o código e encerra sessões anteriores."""
-        connection = get_connection()
-        connection.execute(
-            """UPDATE aluno_acessos SET senha_hash = ?, codigo_hash = NULL, codigo_expira_em = NULL,
-               tentativas_falhas = 0, bloqueado_ate = NULL, atualizado_em = CURRENT_TIMESTAMP
-               WHERE aluno_id = ?""",
-            (senha_hash, aluno_id),
-        )
-        connection.execute("DELETE FROM aluno_sessoes WHERE aluno_id = ?", (aluno_id,))
-        connection.commit()
-
-    @staticmethod
-    def revogar(aluno_id):
-        connection = get_connection()
-        connection.execute(
-            """UPDATE aluno_acessos SET ativo = 0, codigo_hash = NULL, codigo_expira_em = NULL,
-               atualizado_em = CURRENT_TIMESTAMP WHERE aluno_id = ?""",
+            """INSERT INTO aluno_acessos (aluno_id, ativo) VALUES (?, 0)
+               ON CONFLICT(aluno_id) DO UPDATE SET ativo = 0, atualizado_em = CURRENT_TIMESTAMP""",
             (aluno_id,),
         )
         connection.execute("DELETE FROM aluno_sessoes WHERE aluno_id = ?", (aluno_id,))
+        connection.commit()
+
+    @staticmethod
+    def desbloquear(aluno_id):
+        connection = get_connection()
+        connection.execute(
+            """UPDATE aluno_acessos SET ativo = 1, tentativas_falhas = 0, bloqueado_ate = NULL,
+               atualizado_em = CURRENT_TIMESTAMP WHERE aluno_id = ?""",
+            (aluno_id,),
+        )
         connection.commit()
 
     # ---- sessões -----------------------------------------------------
@@ -105,9 +91,9 @@ class AlunoAppRepository:
         return get_connection().execute(
             """SELECT s.id AS sessao_id, s.aluno_id
                FROM aluno_sessoes s
-               JOIN aluno_acessos ac ON ac.aluno_id = s.aluno_id AND ac.ativo = 1
                JOIN alunos a ON a.id = s.aluno_id AND a.status NOT IN ('INATIVO', 'CANCELADO')
-               WHERE s.token_hash = ? AND s.expira_em > ?""",
+               LEFT JOIN aluno_acessos ac ON ac.aluno_id = s.aluno_id
+               WHERE s.token_hash = ? AND s.expira_em > ? AND COALESCE(ac.ativo, 1) = 1""",
             (token_hash, agora),
         ).fetchone()
 
@@ -128,7 +114,7 @@ class AlunoAppRepository:
     @staticmethod
     def perfil(aluno_id):
         return get_connection().execute(
-            "SELECT id, nome_completo, cpf, email, categoria_cnh, status FROM alunos WHERE id = ?",
+            "SELECT id, nome_completo, cpf, email, categoria_cnh, status, data_nascimento FROM alunos WHERE id = ?",
             (aluno_id,),
         ).fetchone()
 

@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, redirect, render_template, request, ur
 from modules.aluno_api import conexao_segura
 
 aluno_app = Blueprint("aluno_app", __name__, url_prefix="/app")
-VERSAO = "1.0.0"
+VERSAO = "1.1.0"
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
        "manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; object-src 'none'")

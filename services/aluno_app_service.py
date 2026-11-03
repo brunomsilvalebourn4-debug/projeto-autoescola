@@ -1,4 +1,4 @@
-"""Regras do app do aluno: autenticação própria e consulta somente leitura das aulas.
+"""Regras do app do aluno: acesso por CPF + data de nascimento e consulta somente leitura das aulas.
 
 As situações seguem exatamente as do sistema web (models/aula.py). A contagem de progresso
 considera a grade registrada: aulas REALIZADA + AGENDADA. CANCELADA e REAGENDADA ficam fora da
@@ -8,6 +8,7 @@ quantidade de aulas contratadas; por isso nenhum valor "contratado" é inventado
 
 import hashlib
 import logging
+from hmac import compare_digest
 import re
 import secrets
 import threading
@@ -16,7 +17,6 @@ from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 
 from flask import current_app
-from werkzeug.security import check_password_hash, generate_password_hash
 
 from repositories.aluno_app_repository import AlunoAppRepository
 
@@ -24,12 +24,9 @@ log = logging.getLogger("autoescola.app_aluno")
 
 FORMATO_DATA_HORA = "%Y-%m-%d %H:%M:%S"
 DIAS_SEMANA = ("Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo")
-ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 LIMITE_FALHAS_CONTA = 5
 MINUTOS_BLOQUEIO = 15
 STATUS_ALUNO_BLOQUEADO = ("INATIVO", "CANCELADO")
-# Hash fixo usado quando o CPF não existe, para igualar o tempo de resposta.
-_HASH_FICTICIO = generate_password_hash(secrets.token_urlsafe(16))
 
 
 class ErroAcesso(Exception):
@@ -106,37 +103,41 @@ def hash_token(token):
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def normalizar_codigo(codigo):
-    return re.sub(r"[^A-Z0-9]", "", (codigo or "").upper())
+def normalizar_data(valor):
+    """Aceita AAAA-MM-DD ou DD/MM/AAAA e devolve AAAA-MM-DD, ou "" se inválida."""
+    valor = (valor or "").strip()
+    for formato in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(valor, formato).date().isoformat()
+        except ValueError:
+            continue
+    return ""
 
 
-def gerar_codigo(aluno_id):
-    """Gera um código de ativação de uso único. Retorna o código em claro uma única vez."""
-    codigo = "".join(secrets.choice(ALFABETO_CODIGO) for _ in range(8))
-    expira = agora() + timedelta(hours=current_app.config["ALUNO_APP_CODIGO_HORAS"])
-    AlunoAppRepository.definir_codigo(aluno_id, generate_password_hash(codigo), _texto(expira))
-    log.info("codigo_app_gerado aluno_id=%s", aluno_id)
-    return f"{codigo[:4]}-{codigo[4:]}", expira
+def bloquear(aluno_id):
+    AlunoAppRepository.bloquear(aluno_id)
+    log.info("acesso_app_bloqueado aluno_id=%s", aluno_id)
 
 
-def revogar(aluno_id):
-    AlunoAppRepository.revogar(aluno_id)
-    log.info("acesso_app_revogado aluno_id=%s", aluno_id)
+def desbloquear(aluno_id):
+    AlunoAppRepository.desbloquear(aluno_id)
+    log.info("acesso_app_desbloqueado aluno_id=%s", aluno_id)
 
 
 def status_acesso(aluno_id):
     acesso = AlunoAppRepository.acesso(aluno_id)
-    if not acesso:
-        return {"situacao": "SEM_ACESSO"}
-    if not acesso["ativo"]:
-        return {"situacao": "REVOGADO"}
-    if acesso["senha_hash"]:
-        return {"situacao": "ATIVO", "ultimo_acesso": acesso["ultimo_acesso"], "codigo_pendente": bool(acesso["codigo_hash"])}
-    return {"situacao": "AGUARDANDO_ATIVACAO", "codigo_expira_em": acesso["codigo_expira_em"]}
+    aluno = AlunoAppRepository.perfil(aluno_id)
+    ultimo = acesso["ultimo_acesso"] if acesso else None
+    if acesso and not acesso["ativo"]:
+        return {"situacao": "BLOQUEADO", "ultimo_acesso": ultimo}
+    if not aluno or aluno["status"] in STATUS_ALUNO_BLOQUEADO:
+        return {"situacao": "ALUNO_INATIVO", "ultimo_acesso": ultimo}
+    if not normalizar_data(aluno["data_nascimento"]):
+        return {"situacao": "SEM_NASCIMENTO", "ultimo_acesso": ultimo}
+    return {"situacao": "LIBERADO", "ultimo_acesso": ultimo}
 
 
 def _conta_para(cpf):
-    """Retorna a conta utilizável ou None, sempre com o mesmo tempo aproximado."""
     conta = AlunoAppRepository.buscar_por_cpf(cpf) if len(cpf) == 11 else None
     if not conta or conta["ativo"] != 1 or conta["aluno_status"] in STATUS_ALUNO_BLOQUEADO:
         return None
@@ -163,48 +164,24 @@ def _emitir_sessao(conta, momento, ip, evento):
     return {"token": token, "expira_em": expira.isoformat(timespec="seconds"), "nome": conta["nome_completo"]}
 
 
-def entrar(cpf, senha, ip):
+def entrar(cpf, data_nascimento, ip):
+    """Decisão da Autoescola: o aluno entra com CPF + data de nascimento do cadastro.
+
+    Esses dados não são secretos; a proteção vem do limite de tentativas, do bloqueio
+    temporário da conta e do bloqueio individual feito pela equipe.
+    """
     cpf = somente_digitos(cpf)
+    informada = normalizar_data(data_nascimento)
     momento = agora()
     conta = _conta_para(cpf)
     if conta:
         _verificar_bloqueio(conta, momento)
-    senha_hash = conta["senha_hash"] if conta and conta["senha_hash"] else _HASH_FICTICIO
-    if not senha or not check_password_hash(senha_hash, senha) or not conta or not conta["senha_hash"]:
+    cadastrada = normalizar_data(conta["data_nascimento"]) if conta else ""
+    confere = compare_digest(cadastrada or "sem-cadastro", informada or "nao-informada")
+    if not conta or not cadastrada or not informada or not confere:
         _falhar(conta, momento, "login", ip)
-        raise ErroAcesso("CPF ou senha inválidos.")
+        raise ErroAcesso("CPF ou data de nascimento não conferem com o cadastro da autoescola.")
     return _emitir_sessao(conta, momento, ip, "app_aluno_login")
-
-
-def validar_senha_nova(senha, confirmacao, cpf):
-    if len(senha or "") < 8:
-        return "A senha deve ter pelo menos 8 caracteres."
-    if len(senha) > 128:
-        return "A senha deve ter no máximo 128 caracteres."
-    if senha != confirmacao:
-        return "As senhas não conferem."
-    if somente_digitos(senha) == cpf or len(set(senha)) < 4:
-        return "Escolha uma senha menos previsível."
-    return None
-
-
-def ativar(cpf, codigo, senha, confirmacao, ip):
-    """Primeiro acesso ou redefinição: troca o código entregue pela Autoescola por uma senha."""
-    cpf = somente_digitos(cpf)
-    erro_senha = validar_senha_nova(senha, confirmacao, cpf)
-    if erro_senha:
-        raise ErroAcesso(erro_senha, 400)
-    momento = agora()
-    conta = _conta_para(cpf)
-    if conta:
-        _verificar_bloqueio(conta, momento)
-    codigo_hash = conta["codigo_hash"] if conta and conta["codigo_hash"] else _HASH_FICTICIO
-    valido = check_password_hash(codigo_hash, normalizar_codigo(codigo))
-    if not conta or not conta["codigo_hash"] or not valido or conta["codigo_expira_em"] <= _texto(momento):
-        _falhar(conta, momento, "ativacao", ip)
-        raise ErroAcesso("CPF ou código de acesso inválido ou expirado.")
-    AlunoAppRepository.definir_senha(conta["aluno_id"], generate_password_hash(senha))
-    return _emitir_sessao(conta, momento, ip, "app_aluno_ativacao")
 
 
 def autenticar_token(token):

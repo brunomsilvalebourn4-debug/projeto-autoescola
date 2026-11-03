@@ -4,7 +4,7 @@
 
   const API = "/api/aluno";
   const CHAVE_TOKEN = "minhasAulas.token";
-  const VERSAO = "1.0.0";
+  const VERSAO = "1.1.0";
   const INTERVALO_ATUALIZACAO = 60000;
   const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
   const MESES_CURTOS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
@@ -32,8 +32,6 @@
     esq: '<path d="m15 6-6 6 6 6"/>',
     check: '<path d="m5 12 5 5 9-10"/>',
     fechar: '<path d="M6 6l12 12M18 6 6 18"/>',
-    olho: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-    olhoFechado: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><path d="M3 3l18 18"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
     relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     sair: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/>',
@@ -52,7 +50,6 @@
     abaAulas: "proximas",
     calMes: null,
     calDia: null,
-    modoAuth: "login",
     avisoAuth: "",
     sheetAberta: false,
     sheetInterna: false,
@@ -217,7 +214,6 @@
     estado.resumo = estado.aulas = estado.perfil = null;
     estado.calMes = estado.calDia = null;
     estado.erroCarga = null;
-    estado.modoAuth = "login";
     estado.avisoAuth = aviso || "";
     fecharSheet(false);
     if (location.hash) history.replaceState(null, "", location.pathname);
@@ -226,41 +222,27 @@
 
   // ---------- telas: autenticação ----------
 
-  function campoSenha(id, nome, autocomplete, rotulo, dica) {
-    return '<div class="field"><label for="' + id + '">' + rotulo + "</label>" +
-      '<div class="control"><input id="' + id + '" name="' + nome + '" type="password" autocomplete="' + autocomplete + '" required minlength="' + (nome === "senha" && autocomplete === "current-password" ? 1 : 8) + '" maxlength="128">' +
-      '<button type="button" class="icon-btn toggle" data-acao="mostrar-senha" data-alvo="' + id + '" aria-label="Mostrar senha" aria-pressed="false">' + icone("olho") + "</button></div>" +
-      (dica ? '<p class="hint">' + dica + "</p>" : "") + "</div>";
-  }
-
-  function campoCpf() {
-    return '<div class="field"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" autocomplete="username" placeholder="000.000.000-00" maxlength="14" required data-mascara="cpf"></div>';
-  }
-
   function telaAuth() {
     const aviso = estado.avisoAuth;
     const alerta = '<div class="alert" role="alert"' + (aviso ? "" : " hidden") + ">" + esc(aviso) + "</div>";
-    const marca = '<div class="brand"><img src="/static/app_aluno/icon.svg" alt=""><h1>Minhas Aulas</h1><p>Acompanhe suas aulas da autoescola</p></div>';
-    if (estado.modoAuth === "ativar") {
-      return '<main class="auth fade-in">' + marca +
-        '<h2 class="auth-title">Primeiro acesso</h2><p class="auth-sub">Use o código entregue pela autoescola para criar sua senha. O mesmo caminho serve para redefinir a senha.</p>' +
-        '<form class="form" data-form="ativar" novalidate>' + alerta + campoCpf() +
-        '<div class="field"><label for="codigo">Código de acesso</label><input id="codigo" name="codigo" class="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="ABCD-1234" maxlength="9" required></div>' +
-        campoSenha("senha", "senha", "new-password", "Crie uma senha", "Mínimo de 8 caracteres.") +
-        campoSenha("confirmacao", "confirmacao", "new-password", "Confirme a senha", "") +
-        '<button class="btn primary" type="submit">Criar senha e entrar</button></form>' +
-        '<button class="btn link" type="button" data-acao="modo-auth" data-valor="login">Já tenho senha</button></main>';
-    }
-    return '<main class="auth fade-in">' + marca +
-      '<form class="form" data-form="login" novalidate>' + alerta + campoCpf() +
-      campoSenha("senha", "senha", "current-password", "Senha", "") +
+    return '<main class="auth fade-in">' +
+      '<div class="brand"><img src="/static/app_aluno/icon.svg" alt=""><h1>Minhas Aulas</h1><p>Acompanhe suas aulas da autoescola</p></div>' +
+      '<form class="form" data-form="login" novalidate>' + alerta +
+      '<div class="field"><label for="cpf">CPF</label><input id="cpf" name="cpf" inputmode="numeric" autocomplete="username" placeholder="000.000.000-00" maxlength="14" required data-mascara="cpf"></div>' +
+      '<div class="field"><label for="nascimento">Data de nascimento</label><input id="nascimento" name="nascimento" inputmode="numeric" autocomplete="bday" placeholder="DD/MM/AAAA" maxlength="10" required data-mascara="data"></div>' +
       '<button class="btn primary" type="submit">Entrar</button></form>' +
-      '<button class="btn link" type="button" data-acao="modo-auth" data-valor="ativar">Primeiro acesso ou esqueci minha senha</button>' +
-      '<p class="auth-foot">Somente consulta. Agendamentos e alterações são feitos pela autoescola.</p></main>';
+      '<p class="auth-foot">Use o CPF e a data de nascimento cadastrados na autoescola. Somente consulta: agendamentos e alterações são feitos pela autoescola.</p></main>';
+  }
+
+  function dataIso(texto) {
+    const partes = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto || "");
+    if (!partes) return "";
+    const data = new Date(Number(partes[3]), Number(partes[2]) - 1, Number(partes[1]));
+    if (data.getDate() !== Number(partes[1]) || data.getMonth() !== Number(partes[2]) - 1 || data > new Date()) return "";
+    return isoLocal(data);
   }
 
   async function enviarAuth(form) {
-    const modo = form.getAttribute("data-form");
     const dados = Object.fromEntries(new FormData(form).entries());
     const alerta = form.querySelector(".alert");
     const botao = form.querySelector('button[type="submit"]');
@@ -269,22 +251,15 @@
       alerta.hidden = false;
     };
     const cpf = (dados.cpf || "").replace(/\D/g, "");
+    const nascimento = dataIso(dados.nascimento);
     if (cpf.length !== 11) return mostrarErro("Informe um CPF com 11 dígitos.");
-    if (modo === "login" && !dados.senha) return mostrarErro("Informe sua senha.");
-    if (modo === "ativar") {
-      if ((dados.codigo || "").replace(/[^A-Za-z0-9]/g, "").length !== 8) return mostrarErro("Informe o código de 8 caracteres entregue pela autoescola.");
-      if ((dados.senha || "").length < 8) return mostrarErro("A senha deve ter pelo menos 8 caracteres.");
-      if (dados.senha !== dados.confirmacao) return mostrarErro("As senhas não conferem.");
-    }
+    if (!nascimento) return mostrarErro("Informe uma data de nascimento válida no formato DD/MM/AAAA.");
     const textoOriginal = botao.textContent;
     botao.disabled = true;
     botao.textContent = "Aguarde…";
     alerta.hidden = true;
     try {
-      const corpo = modo === "login"
-        ? { cpf: cpf, senha: dados.senha }
-        : { cpf: cpf, codigo: dados.codigo, senha: dados.senha, confirmacao: dados.confirmacao };
-      const resposta = await api(modo === "login" ? "/login" : "/ativar", { metodo: "POST", corpo: corpo, publico: true });
+      const resposta = await api("/login", { metodo: "POST", corpo: { cpf: cpf, data_nascimento: nascimento }, publico: true });
       estado.token = resposta.token;
       estado.avisoAuth = "";
       gravarToken(resposta.token);
@@ -639,18 +614,6 @@
     } else if (acao === "fechar-sheet") fecharSheet(true);
     else if (acao === "sair") {
       api("/logout", { metodo: "POST" }).catch(function () { return null; }).then(function () { encerrarLocal(""); });
-    } else if (acao === "modo-auth") {
-      estado.modoAuth = valor;
-      estado.avisoAuth = "";
-      render(true);
-      focar("#cpf");
-    } else if (acao === "mostrar-senha") {
-      const campo = document.getElementById(alvo.getAttribute("data-alvo"));
-      const visivel = campo.type === "password";
-      campo.type = visivel ? "text" : "password";
-      alvo.setAttribute("aria-pressed", String(visivel));
-      alvo.setAttribute("aria-label", visivel ? "Ocultar senha" : "Mostrar senha");
-      alvo.innerHTML = icone(visivel ? "olhoFechado" : "olho");
     }
   });
 
@@ -676,9 +639,9 @@
     if (campo.getAttribute && campo.getAttribute("data-mascara") === "cpf") {
       const d = campo.value.replace(/\D/g, "").slice(0, 11);
       campo.value = d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
-    } else if (campo.id === "codigo") {
-      const c = campo.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
-      campo.value = c.length > 4 ? c.slice(0, 4) + "-" + c.slice(4) : c;
+    } else if (campo.getAttribute && campo.getAttribute("data-mascara") === "data") {
+      const d = campo.value.replace(/\D/g, "").slice(0, 8);
+      campo.value = d.replace(/^(\d{2})(\d)/, "$1/$2").replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
     }
   });
 

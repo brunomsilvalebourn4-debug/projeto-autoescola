@@ -3,35 +3,23 @@
   <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
     <div>
       <h3 id="acesso-app-titulo" class="text-lg font-bold">App do aluno</h3>
-      <p class="mt-1 text-sm text-slate-500">Consulta das próprias aulas pelo celular em <strong>{{ url_for('aluno_app.shell', _external=True) }}</strong>. O app não altera a grade.</p>
+      <p class="mt-1 text-sm text-slate-500">O aluno consulta as próprias aulas em <strong>{{ url_for('aluno_app.shell', _external=True) }}</strong>, entrando com CPF e data de nascimento. O app não altera a grade.</p>
       <p class="mt-3 text-sm">
         Situação:
-        {% if acesso.situacao == 'ATIVO' %}<strong class="text-emerald-700">Ativo</strong>{% if acesso.ultimo_acesso %} · último acesso em {{ acesso.ultimo_acesso[8:10] }}/{{ acesso.ultimo_acesso[5:7] }}/{{ acesso.ultimo_acesso[:4] }} {{ acesso.ultimo_acesso[11:16] }}{% endif %}
-        {% elif acesso.situacao == 'AGUARDANDO_ATIVACAO' %}<strong class="text-amber-700">Aguardando primeiro acesso</strong>
-        {% elif acesso.situacao == 'REVOGADO' %}<strong class="text-red-700">Revogado</strong>
-        {% else %}<strong class="text-slate-700">Não liberado</strong>{% endif %}
+        {% if acesso.situacao == 'LIBERADO' %}<strong class="text-emerald-700">Liberado</strong>
+        {% elif acesso.situacao == 'BLOQUEADO' %}<strong class="text-red-700">Bloqueado pela equipe</strong>
+        {% elif acesso.situacao == 'SEM_NASCIMENTO' %}<strong class="text-amber-700">Sem acesso: cadastre a data de nascimento</strong>
+        {% else %}<strong class="text-slate-700">Sem acesso: aluno inativo ou cancelado</strong>{% endif %}
+        {% if acesso.ultimo_acesso %} · último acesso em {{ acesso.ultimo_acesso[8:10] }}/{{ acesso.ultimo_acesso[5:7] }}/{{ acesso.ultimo_acesso[:4] }} {{ acesso.ultimo_acesso[11:16] }}{% endif %}
       </p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      {% if aluno.status not in ('INATIVO', 'CANCELADO') %}
-      <form method="post" action="{{ url_for('aluno_acesso.gerar_codigo', aluno_id=aluno.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white">{{ 'Gerar novo código' if acesso.situacao in ('ATIVO', 'AGUARDANDO_ATIVACAO') else 'Liberar acesso' }}</button>
-      </form>
+    <form method="post" action="{{ url_for('aluno_acesso.desbloquear' if acesso.situacao == 'BLOQUEADO' else 'aluno_acesso.bloquear', aluno_id=aluno.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if acesso.situacao == 'BLOQUEADO' %}
+      <button class="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white">Desbloquear acesso</button>
+      {% else %}
+      <button class="rounded-xl border border-red-300 px-5 py-3 font-semibold text-red-700">Bloquear acesso</button>
       {% endif %}
-      {% if acesso.situacao in ('ATIVO', 'AGUARDANDO_ATIVACAO') %}
-      <form method="post" action="{{ url_for('aluno_acesso.revogar', aluno_id=aluno.id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="rounded-xl border border-red-300 px-5 py-3 font-semibold text-red-700">Revogar acesso</button>
-      </form>
-      {% endif %}
-    </div>
+    </form>
   </div>
-  {% if codigo_app %}
-  <div role="status" class="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
-    <p class="text-sm text-blue-900">Código de acesso (exibido somente agora):</p>
-    <p class="mt-1 font-mono text-3xl font-bold tracking-widest text-blue-900">{{ codigo_app }}</p>
-    <p class="mt-2 text-sm text-blue-900">Entregue pessoalmente ao aluno. Válido até {{ codigo_app_expira.strftime('%d/%m/%Y %H:%M') }}. No app, o aluno escolhe “Primeiro acesso”, informa o CPF, este código e cria a própria senha. Gerar um novo código invalida o anterior.</p>
-  </div>
-  {% endif %}
 </section>

@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import sqlite3
 import tempfile
 import unittest
@@ -14,9 +13,10 @@ from services import aluno_app_service
 AGORA = datetime(2026, 9, 28, 10, 0)
 
 DADOS = """
-INSERT INTO alunos(nome_completo,cpf,telefone,email,categoria_cnh) VALUES
- ('João Pereira','52998224725','11999999999','joao@teste.com','B'),
- ('Maria Souza','11144477735','11999999998',NULL,'B');
+INSERT INTO alunos(nome_completo,cpf,telefone,email,categoria_cnh,data_nascimento) VALUES
+ ('João Pereira','52998224725','11999999999','joao@teste.com','B','2004-05-17'),
+ ('Maria Souza','11144477735','11999999998',NULL,'B','2006-11-02'),
+ ('Pedro Sem Data','93541134780','11999999997',NULL,'B',NULL);
 INSERT INTO instrutores(nome,cpf,telefone,horario_inicio,horario_fim) VALUES
  ('Carlos Henrique','12345678909','1190','07:00','19:00'),
  ('Marcos Silva','93541134780','1191','07:00','19:00');
@@ -73,62 +73,45 @@ class AlunoAppTest(unittest.TestCase):
             s.clear()
             s.update(user_id=1, usuario="Equipe", perfil=perfil)
 
-    def gerar_codigo(self, aluno_id):
-        self.como_equipe()
-        r = self.c.post(f"/alunos/{aluno_id}/app-aluno/codigo")
-        self.assertEqual(r.status_code, 200)
-        with self.c.session_transaction() as s:
-            s.clear()
-        return re.search(r"tracking-widest[^>]*>([A-Z0-9]{4}-[A-Z0-9]{4})<", r.get_data(as_text=True)).group(1)
+    def login(self, cpf="529.982.247-25", nascimento="2004-05-17", **kw):
+        return self.c.post("/api/aluno/login", json={"cpf": cpf, "data_nascimento": nascimento}, **kw)
 
-    def ativar(self, cpf, codigo, senha="minha-senha-1"):
-        return self.c.post("/api/aluno/ativar", json={"cpf": cpf, "codigo": codigo, "senha": senha, "confirmacao": senha})
-
-    def token(self, aluno_id=1, cpf="529.982.247-25"):
-        r = self.ativar(cpf, self.gerar_codigo(aluno_id))
+    def token(self, cpf="529.982.247-25", nascimento="2004-05-17"):
+        r = self.login(cpf, nascimento)
         self.assertEqual(r.status_code, 200, r.get_json())
         return r.get_json()["token"]
+
+    def sql_exec(self, comando):
+        con = sqlite3.connect(self.db)
+        con.execute(comando)
+        con.commit()
+        con.close()
 
     def get(self, caminho, token):
         return self.c.get(caminho, headers={"Authorization": f"Bearer {token}"})
 
     # ---- autenticação --------------------------------------------
 
-    def test_ativacao_login_e_senha_com_hash(self):
-        codigo = self.gerar_codigo(1)
-        self.assertEqual(self.ativar("52998224725", "ZZZZ-ZZZZ").status_code, 401)
-        r = self.ativar("52998224725", codigo.lower())
+    def test_login_com_cpf_e_data_de_nascimento(self):
+        r = self.login("52998224725", "2004-05-17")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.get_json()["nome"], "João Pereira")
-        self.assertEqual(self.ativar("52998224725", codigo).status_code, 401, "código é de uso único")
-
-        senha_hash, codigo_hash = self.sql("SELECT senha_hash, codigo_hash FROM aluno_acessos WHERE aluno_id=1")[0]
-        self.assertNotIn("minha-senha-1", senha_hash)
-        self.assertIsNone(codigo_hash)
         token = r.get_json()["token"]
         self.assertEqual(self.sql("SELECT COUNT(*) FROM aluno_sessoes WHERE token_hash=?", (token,))[0][0], 0, "token não é gravado em claro")
+        self.assertEqual(self.get("/api/aluno/perfil", token).status_code, 200)
+        self.assertEqual(self.login("529.982.247-25", "17/05/2004").status_code, 200, "aceita DD/MM/AAAA")
 
-        self.assertEqual(self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "errada-123"}).status_code, 401)
-        r = self.c.post("/api/aluno/login", json={"cpf": "529.982.247-25", "senha": "minha-senha-1"})
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(self.get("/api/aluno/perfil", r.get_json()["token"]).status_code, 200)
+    def test_dados_que_nao_conferem(self):
+        for cpf, nascimento in [("52998224725", "2004-05-18"), ("52998224725", ""), ("52998224725", "31/02/2004"),
+                                ("11144477735", "2004-05-17"), ("00000000000", "2004-05-17")]:
+            aluno_app_service.limitador.limpar()
+            r = self.login(cpf, nascimento)
+            self.assertEqual(r.status_code, 401, (cpf, nascimento))
+            self.assertEqual(r.get_json()["erro"], "CPF ou data de nascimento não conferem com o cadastro da autoescola.")
 
-    def test_aluno_sem_acesso_liberado_nao_entra(self):
-        r = self.c.post("/api/aluno/login", json={"cpf": "11144477735", "senha": "qualquer-coisa"})
-        self.assertEqual(r.status_code, 401)
-        self.assertEqual(r.get_json()["erro"], "CPF ou senha inválidos.")
-
-    def test_senha_fraca_rejeitada(self):
-        codigo = self.gerar_codigo(1)
-        self.assertEqual(self.ativar("52998224725", codigo, senha="1234567").status_code, 400)
-        self.assertEqual(self.ativar("52998224725", codigo, senha="52998224725").status_code, 400)
-        r = self.c.post("/api/aluno/ativar", json={"cpf": "52998224725", "codigo": codigo, "senha": "minha-senha-1", "confirmacao": "outra-senha-1"})
-        self.assertEqual(r.status_code, 400)
-
-    def test_codigo_expirado(self):
-        codigo = self.gerar_codigo(1)
-        self.agora = AGORA + timedelta(hours=73)
-        self.assertEqual(self.ativar("52998224725", codigo).status_code, 401)
+    def test_aluno_sem_data_de_nascimento_nao_entra(self):
+        self.assertEqual(self.login("93541134780", "").status_code, 401)
+        self.assertEqual(self.login("93541134780", "2000-01-01").status_code, 401)
 
     def test_token_ausente_invalido_expirado_e_logout(self):
         self.assertEqual(self.c.get("/api/aluno/resumo").status_code, 401)
@@ -138,51 +121,41 @@ class AlunoAppTest(unittest.TestCase):
         self.agora = AGORA + timedelta(days=31)
         self.assertEqual(self.get("/api/aluno/resumo", token).status_code, 401)
         self.agora = AGORA
-        token = self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "minha-senha-1"}).get_json()["token"]
+        token = self.token()
         self.assertEqual(self.c.post("/api/aluno/logout", headers={"Authorization": f"Bearer {token}"}).status_code, 204)
         self.assertEqual(self.get("/api/aluno/resumo", token).status_code, 401)
 
-    def test_revogacao_status_do_aluno_e_nova_ativacao_encerram_sessoes(self):
+    def test_bloqueio_pela_equipe_e_status_do_aluno(self):
         token = self.token()
         self.como_equipe()
-        self.c.post("/alunos/1/app-aluno/revogar")
-        self.assertEqual(self.get("/api/aluno/resumo", token).status_code, 401)
-        self.assertEqual(self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "minha-senha-1"}).status_code, 401)
+        self.c.post("/alunos/1/app-aluno/bloquear")
+        self.assertEqual(self.get("/api/aluno/resumo", token).status_code, 401, "bloqueio encerra sessões abertas")
+        self.assertEqual(self.login().status_code, 401)
 
+        self.como_equipe()
+        self.c.post("/alunos/1/app-aluno/desbloquear")
         token = self.token()
         self.sql_exec("UPDATE alunos SET status='INATIVO' WHERE id=1")
         self.assertEqual(self.get("/api/aluno/resumo", token).status_code, 401)
-        self.sql_exec("UPDATE alunos SET status='ATIVO' WHERE id=1")
-
-        antigo = self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "minha-senha-1"}).get_json()["token"]
-        self.token()
-        self.assertEqual(self.get("/api/aluno/resumo", antigo).status_code, 401, "redefinir senha encerra sessões anteriores")
-
-    def sql_exec(self, comando):
-        con = sqlite3.connect(self.db)
-        con.execute(comando)
-        con.commit()
-        con.close()
+        self.assertEqual(self.login().status_code, 401)
 
     def test_limite_de_tentativas_por_origem_e_bloqueio_da_conta(self):
-        self.token()
-        for _ in range(5):
-            self.assertEqual(self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "errada-123"}).status_code, 401)
-        r = self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "minha-senha-1"})
-        self.assertEqual(r.status_code, 429, "conta bloqueada após 5 falhas")
+        for dia in range(1, 6):
+            self.assertEqual(self.login(nascimento=f"2004-05-0{dia}").status_code, 401)
+        self.assertEqual(self.login().status_code, 429, "conta bloqueada após 5 falhas, mesmo com a data certa")
         self.agora = AGORA + timedelta(minutes=16)
-        self.assertEqual(self.c.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "minha-senha-1"}).status_code, 200)
+        self.assertEqual(self.login().status_code, 200)
 
         aluno_app_service.limitador.limpar()
-        respostas = [self.c.post("/api/aluno/login", json={"cpf": f"000000000{n:02d}", "senha": "x"}).status_code for n in range(11)]
+        respostas = [self.login(f"000000000{n:02d}", "2000-01-01").status_code for n in range(11)]
         self.assertEqual(respostas[:10], [401] * 10)
         self.assertEqual(respostas[10], 429, "limite por IP")
 
     # ---- isolamento ----------------------------------------------
 
     def test_aluno_so_ve_as_proprias_aulas(self):
-        token_joao = self.token(1, "52998224725")
-        token_maria = self.token(2, "11144477735")
+        token_joao = self.token("52998224725", "2004-05-17")
+        token_maria = self.token("11144477735", "2006-11-02")
 
         aulas = self.get("/api/aluno/aulas?aluno_id=2", token_joao).get_json()
         ids = {a["id"] for grupo in ("proximas", "realizadas", "outras") for a in aulas[grupo]}
@@ -281,33 +254,33 @@ class AlunoAppTest(unittest.TestCase):
 
     # ---- área administrativa -------------------------------------
 
-    def test_apenas_equipe_libera_acesso(self):
-        self.assertEqual(self.c.post("/alunos/1/app-aluno/codigo").status_code, 302)
+    def test_apenas_equipe_bloqueia_acesso(self):
+        self.assertEqual(self.c.post("/alunos/1/app-aluno/bloquear").status_code, 302)
+        self.assertEqual(self.login().status_code, 200, "sem sessão da equipe, nada é bloqueado")
         self.como_equipe("INSTRUTOR")
-        self.assertEqual(self.c.post("/alunos/1/app-aluno/codigo").status_code, 403)
-        self.assertEqual(self.c.post("/alunos/1/app-aluno/revogar").status_code, 403)
+        self.assertEqual(self.c.post("/alunos/1/app-aluno/bloquear").status_code, 403)
+        self.assertEqual(self.c.post("/alunos/1/app-aluno/desbloquear").status_code, 403)
         self.como_equipe("ADMINISTRADOR")
-        self.assertEqual(self.c.post("/alunos/99/app-aluno/codigo").status_code, 404)
-        self.sql_exec("UPDATE alunos SET status='CANCELADO' WHERE id=2")
-        self.c.post("/alunos/2/app-aluno/codigo")
-        self.assertEqual(self.sql("SELECT COUNT(*) FROM aluno_acessos WHERE aluno_id=2")[0][0], 0)
+        self.assertEqual(self.c.post("/alunos/99/app-aluno/bloquear").status_code, 404)
 
     def test_detalhe_do_aluno_exibe_situacao_do_acesso(self):
         self.como_equipe()
-        self.assertIn("Não liberado", self.c.get("/alunos/1").get_data(as_text=True))
-        self.token()
-        self.como_equipe()
-        self.assertIn("Ativo", self.c.get("/alunos/1").get_data(as_text=True))
+        self.assertIn("Liberado", self.c.get("/alunos/1").get_data(as_text=True))
+        self.assertIn("cadastre a data de nascimento", self.c.get("/alunos/3").get_data(as_text=True))
+        self.c.post("/alunos/1/app-aluno/bloquear")
+        html = self.c.get("/alunos/1").get_data(as_text=True)
+        self.assertIn("Bloqueado pela equipe", html)
+        self.assertIn("Desbloquear acesso", html)
 
     # ---- transporte e PWA ----------------------------------------
 
     def test_csrf_continua_nas_rotas_da_equipe_e_nao_se_aplica_a_api_por_token(self):
         app = create_app({"TESTING": True, "DB_NAME": self.db, "SECRET_KEY": "x", "CSRF_ENABLED": True})
         cliente = app.test_client()
-        self.assertEqual(cliente.post("/api/aluno/login", json={"cpf": "52998224725", "senha": "x"}).status_code, 401)
+        self.assertEqual(cliente.post("/api/aluno/login", json={"cpf": "52998224725", "data_nascimento": "2004-05-17"}).status_code, 200)
         with cliente.session_transaction() as s:
             s.update(user_id=1, usuario="Equipe", perfil="ATENDENTE")
-        self.assertEqual(cliente.post("/alunos/1/app-aluno/codigo").status_code, 400)
+        self.assertEqual(cliente.post("/alunos/1/app-aluno/bloquear").status_code, 400)
 
     def test_https_obrigatorio_em_producao(self):
         self.app.config.update(ALUNO_APP_EXIGIR_HTTPS=True, ALUNO_APP_PROXIES=1)
@@ -322,9 +295,9 @@ class AlunoAppTest(unittest.TestCase):
     def test_ip_do_cliente_atras_do_proxy(self):
         self.app.config.update(ALUNO_APP_PROXIES=1)
         for n in range(10):
-            self.c.post("/api/aluno/login", json={"cpf": f"000000000{n:02d}", "senha": "x"}, headers={"X-Forwarded-For": "1.1.1.1"})
-        bloqueado = self.c.post("/api/aluno/login", json={"cpf": "00000000099", "senha": "x"}, headers={"X-Forwarded-For": "1.1.1.1"})
-        outro = self.c.post("/api/aluno/login", json={"cpf": "00000000099", "senha": "x"}, headers={"X-Forwarded-For": "2.2.2.2"})
+            self.login(f"000000000{n:02d}", "2000-01-01", headers={"X-Forwarded-For": "1.1.1.1"})
+        bloqueado = self.login("00000000099", "2000-01-01", headers={"X-Forwarded-For": "1.1.1.1"})
+        outro = self.login("00000000099", "2000-01-01", headers={"X-Forwarded-For": "2.2.2.2"})
         self.assertEqual((bloqueado.status_code, outro.status_code), (429, 401))
 
     def test_app_instalavel(self):

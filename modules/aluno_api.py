@@ -98,26 +98,12 @@ def _limitar_acesso(cpf):
 @aluno_api.post("/login")
 def login():
     dados = _dados()
-    cpf, senha = str(dados.get("cpf", "")), str(dados.get("senha", ""))
+    cpf, nascimento = str(dados.get("cpf", "")), str(dados.get("data_nascimento", ""))
     bloqueio = _limitar_acesso(cpf)
     if bloqueio:
         return bloqueio
     try:
-        return jsonify(servico.entrar(cpf, senha, ip_cliente()))
-    except servico.ErroAcesso as falha:
-        return erro(falha.mensagem, falha.status)
-
-
-@aluno_api.post("/ativar")
-def ativar():
-    dados = _dados()
-    cpf = str(dados.get("cpf", ""))
-    bloqueio = _limitar_acesso(cpf)
-    if bloqueio:
-        return bloqueio
-    try:
-        return jsonify(servico.ativar(cpf, str(dados.get("codigo", "")), str(dados.get("senha", "")),
-                                      str(dados.get("confirmacao", "")), ip_cliente()))
+        return jsonify(servico.entrar(cpf, nascimento, ip_cliente()))
     except servico.ErroAcesso as falha:
         return erro(falha.mensagem, falha.status)
 
